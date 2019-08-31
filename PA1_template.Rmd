@@ -1,0 +1,110 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+  html_document:
+    keep_md: true
+---
+```{r, echo = TRUE}
+library(dplyr)
+library(ggplot2)
+```
+
+## Loading and preprocessing the data
+```{r, echo = TRUE} 
+data <- read.csv("activity.csv", as.is = TRUE)
+activity <- data[complete.cases(data), ]
+```
+
+
+## What is mean total number of steps taken per day?
+
+```{r, echo = TRUE} 
+stepsTaken <- aggregate(steps ~ date, activity, sum)
+hist(stepsTaken$steps, main = "Total Steps Taken Per Day", xlab = "steps")
+```
+
+Mean of the total number of steps taken:
+```{r, echo = TRUE} 
+mean(stepsTaken$steps)
+```
+
+Median of the total number of steps taken:
+```{r, echo = TRUE} 
+median(stepsTaken$steps)
+```
+
+## What is the average daily activity pattern?
+
+```{r, echo = TRUE} 
+activityPattern <- aggregate(steps~interval, activity, mean)
+plot(activityPattern$interval, activityPattern$steps, type = "l",
+     main = "Average Number of Steps by Interval", xlab = "Interval",
+     ylab = "Average Number of Steps")
+```
+
+```{r, echo = TRUE} 
+maximumSteps <- which.max(activityPattern$steps)
+activityPattern[maximumSteps, ]
+```
+The interval with the highest average steps is interval 835 with 206.1698 steps. 
+
+## Imputing missing values
+```{r, echo = TRUE} 
+sum(is.na(data))
+```
+There are 2304 rows with NA's
+
+```{r, echo = TRUE} 
+for(i in 1:nrow(data)) {
+  if(is.na(data$steps[i])) {
+    imputed <- activityPattern$steps[which(activityPattern$interval==
+                                             data$interval[i])]
+    
+    data$steps[i] <- imputed
+  }
+}
+```
+
+```{r, echo = TRUE} 
+stepsTakenImputed <- aggregate(steps ~ date, data, sum)
+
+hist(stepsTakenImputed$steps, main = "Total Steps Taken Per Day (Imputed)", xlab = "Steps")
+```
+
+Mean of the total number of steps taken:
+```{r, echo = TRUE} 
+mean(stepsTakenImputed$steps)
+```
+
+Median of the total number of steps taken:
+```{r, echo = TRUE} 
+median(stepsTakenImputed$steps)
+```
+
+The median for the imputed data increased slightly. The distribution also changed slightly. 
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+```{r, echo = TRUE} 
+weekDay <- function(date_val) {
+  wd<- weekdays(as.Date(date_val, '%Y-%m-%d'))
+  if(!(wd == 'Saturday' || wd== 'Sunday')){
+    day <- 'Weekday'
+  }
+  else {
+    day <- 'Weekend'
+  }
+  day
+}
+```
+
+```{r, echo = TRUE} 
+data$day_type <- as.factor(sapply(data$date, weekDay))
+
+stepsTakenImputed <- aggregate(steps ~ interval + day_type, data, mean)
+
+ggplot(stepsTakenImputed, aes(interval, steps)) + 
+  geom_line(stat = "identity") + facet_grid(day_type ~., scales = "fixed",
+  space = "fixed") + labs(x= "Interval", y= "Steps")+ 
+  ggtitle("Steps Taken per Interval by Day Type")
+```
